@@ -1,0 +1,10 @@
+{
+  "account_login": 0,
+  "account_password": "",
+  "broker_server_name": "",
+  "provider": "OpenAI",
+  "api_key": "sk-9fc6f9a7178a0c1d-b2d998-c54c5989",
+  "custom_model": "trader",
+  "custom_url": "https://omniroute.ai.ntk.ir/v1",
+  "max_open_positions": 20
+}

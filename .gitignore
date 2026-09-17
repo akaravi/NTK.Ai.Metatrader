@@ -1,0 +1,9 @@
+.DS_Store
+__pycache__
+secrets.py
+secrets.mqh
+venv/
+dist/
+build/
+*.egg-info/
+python/build.sh

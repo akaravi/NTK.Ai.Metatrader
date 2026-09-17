@@ -1,0 +1,189 @@
+/* NTK.Ai.Metatrader - Institutional Pro Dark Theme */
+/* Developed by Ali Karavi (https://alikaravi.com/) */
+
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+    --bg-main: #090d16;
+    --bg-panel: #0f1523;
+    --bg-card: #151c2e;
+    --bg-input: #0b101c;
+    --border-color: #1e293b;
+    --border-focus: #3b82f6;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --success: #10b981;
+    --danger: #f43f5e;
+    --warning: #f59e0b;
+    --cyan: #06b6d4;
+    --purple: #8b5cf6;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, Tahoma, sans-serif;
+    background-color: var(--bg-main);
+    color: #f1f5f9;
+    direction: rtl;
+    text-align: right;
+    scroll-behavior: smooth;
+}
+.font-mono {
+    font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Strict LTR/RTL Form Input Management */
+.ltr-input, 
+input.ltr-input, 
+textarea.ltr-input {
+    direction: ltr !important;
+    text-align: left !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    unicode-bidi: embed !important;
+}
+
+.ltr-input::placeholder {
+    direction: ltr !important;
+    text-align: left !important;
+    font-family: 'JetBrains Mono', monospace !important;
+}
+
+.rtl-text,
+label.rtl-text,
+div.rtl-text {
+    direction: rtl !important;
+    text-align: right !important;
+}
+
+/* Enhanced High-Contrast Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+}
+::-webkit-scrollbar-track {
+    background: #090d16;
+}
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
+/* Micro Animations & Focus States */
+.card-pro {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.card-pro:hover {
+    border-color: #334155;
+}
+
+/* Navigation Dock Icons */
+.dock-btn {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    color: #94a3b8;
+    background: transparent;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.dock-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.dock-btn.active {
+    color: #ffffff;
+    background: var(--accent);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+/* Segmented Control Buttons */
+.segment-tab {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    transition: all 0.15s;
+    cursor: pointer;
+}
+
+.segment-tab:hover {
+    color: #ffffff;
+}
+
+.segment-tab.active {
+    background: #1e293b;
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Timeframe Pills */
+.tf-pill {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    transition: all 0.15s;
+}
+
+.tf-pill:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tf-pill.active {
+    background: var(--accent) !important;
+    color: #ffffff !important;
+}
+
+/* Toast Animation */
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.toast-msg {
+    animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Live Tick Flashes */
+@keyframes tickUp {
+    0% { color: #10b981; }
+    100% { color: #f1f5f9; }
+}
+
+@keyframes tickDown {
+    0% { color: #f43f5e; }
+    100% { color: #f1f5f9; }
+}
+
+.flash-up {
+    animation: tickUp 0.6s ease;
+}
+
+.flash-down {
+    animation: tickDown 0.6s ease;
+}
