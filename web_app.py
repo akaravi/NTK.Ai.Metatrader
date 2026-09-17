@@ -45,35 +45,62 @@ AGENTS_DB: Dict[str, Dict[str, Any]] = {
     "agent_1": {
         "id": 1,
         "name": "Alpha-Trend-Master",
-        "description": "Multi-timeframe trend follower with ATR risk filter",
+        "title_fa": "ایجنت ترند مستر آلفا",
+        "description_fa": "تعقیب روندهای اصلی ماژور با فیلتر نوسان و مدیریت ریسک ATR",
         "win_rate": 78.5,
         "total_pnl": 3420.50,
+        "total_trades": 86,
         "followers_count": 42,
-        "status": "online",
-        "strategy": "Trend Following",
+        "strategy": "تعقیب روند و سوپرترند",
+        "timeframe": "M15 / H1",
+        "symbols": ["EURUSD", "GBPUSD", "XAUUSD"],
+        "lot_size": 0.01,
         "avatar": "bot"
     },
     "agent_2": {
         "id": 2,
         "name": "Scalp-Sniper-M1",
-        "description": "Micro-momentum scalper with tight SL on M1/M5",
+        "title_fa": "اسکالپر تک‌تیرانداز M1",
+        "description_fa": "اسکالپینگ فوق‌سریع مومنتوم با حد ضرر کوتاه در تایم‌فریم‌های ۱ و ۵ دقیقه",
         "win_rate": 83.2,
         "total_pnl": 5120.00,
+        "total_trades": 142,
         "followers_count": 68,
-        "status": "online",
-        "strategy": "High-Frequency Scalping",
+        "strategy": "اسکالپینگ سشن‌ها و مومنتوم",
+        "timeframe": "M1 / M5",
+        "symbols": ["EURUSD", "USDJPY", "XAUUSD"],
+        "lot_size": 0.01,
         "avatar": "zap"
     },
     "agent_3": {
         "id": 3,
         "name": "Macro-Arbitrageur",
-        "description": "Cross-market intelligence and macroeconomic regime arbitrage",
+        "title_fa": "آربیتراژور ماکرو و اخبار کلان",
+        "description_fa": "تحلیل همبستگی دارایی‌ها، شاخص دلار DXY، بازده اوراق و رویدادهای تقویم کلان",
         "win_rate": 71.0,
         "total_pnl": 2180.20,
+        "total_trades": 54,
         "followers_count": 29,
-        "status": "online",
-        "strategy": "Macro Sentiment Arbitrage",
+        "strategy": "آربیتراژ ماکرو و همبستگی",
+        "timeframe": "H1 / H4",
+        "symbols": ["XAUUSD", "USDCAD", "USDCHF"],
+        "lot_size": 0.01,
         "avatar": "globe"
+    },
+    "agent_4": {
+        "id": 4,
+        "name": "SMC-Liquidity-Hunter",
+        "title_fa": "شکارچی نقدینگی اسمارت مانی",
+        "description_fa": "شناسایی اوردر بلاک‌های نهادی، استاپ هانت و عدم تعادل‌های FVG",
+        "win_rate": 81.4,
+        "total_pnl": 4290.00,
+        "total_trades": 98,
+        "followers_count": 51,
+        "strategy": "پرایس اکشن اسمارت مانی (SMC)",
+        "timeframe": "M15 / H1",
+        "symbols": ["EURUSD", "GBPUSD", "XAUUSD", "BTCUSD"],
+        "lot_size": 0.01,
+        "avatar": "target"
     }
 }
 
@@ -281,6 +308,7 @@ class SettingsPayload(BaseModel):
     custom_model: str = ""
     custom_url: str = ""
     max_open_positions: int = Field(default=10, ge=1, le=50)
+    min_trade_confidence: float = Field(default=75.0, ge=50.0, le=99.0)
     ai_position_monitor_enabled: bool = True
     ai_position_monitor_interval: int = 20
 class FollowRequest(BaseModel):
@@ -357,7 +385,9 @@ def init_agent_from_settings(cfg: Optional[dict] = None) -> bool:
     custom_url = cfg.get("custom_url", "") or settings.OMNIROUTE_BASE_URL
     custom_model = cfg.get("custom_model", "") or settings.OMNIROUTE_MODEL
     settings.MAX_OPEN_POSITIONS = int(cfg.get("max_open_positions", 10) or 10)
-
+    min_conf = float(cfg.get("min_trade_confidence", 75.0) or 75.0)
+    settings.MIN_TRADE_CONFIDENCE = min_conf
+    settings.SCALP_MIN_CONFIDENCE = min_conf
     ai_service.update_config(custom_url, api_key, custom_model)
     try:
         agent = Agent(
@@ -1007,6 +1037,156 @@ async def export_trades_csv():
     )
 
 
+@app.get("/api/reports/trade-journal/html", response_class=HTMLResponse)
+async def get_printable_trade_journal_html():
+    """Generate an institutional printable HTML/PDF performance debrief report."""
+    summary = db.get_performance_summary()
+    insights = db.get_ai_trade_insights(limit=100)
+    trades = db.get_trades_history(limit=100, status="CLOSED")
+    pairs = db.get_pair_performance_breakdown()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    trades_rows = ""
+    for t in trades:
+        is_win = (t.get("profit") or 0.0) > 0
+        pnl_color = "#10b981" if is_win else "#f43f5e"
+        pnl_val = t.get("profit") or 0.0
+        trades_rows += f"""
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 8px; font-family: monospace;">#{t.get('ticket')}</td>
+            <td style="padding: 8px; font-weight: bold;">{t.get('symbol')}</td>
+            <td style="padding: 8px; font-weight: bold; color: {'#10b981' if t.get('type') == 'BUY' else '#f43f5e'};">{t.get('type')}</td>
+            <td style="padding: 8px; font-family: monospace;">{t.get('volume')}</td>
+            <td style="padding: 8px; font-family: monospace;">{t.get('open_price')}</td>
+            <td style="padding: 8px; font-family: monospace;">{t.get('close_price') or '-'}</td>
+            <td style="padding: 8px; font-weight: bold; font-family: monospace; color: {pnl_color};">{'+' if pnl_val >= 0 else ''}${pnl_val:.2f}</td>
+            <td style="padding: 8px; font-size: 11px;">{t.get('prediction_title') or t.get('strategy')}</td>
+            <td style="padding: 8px; font-size: 10px; color: #64748b;">{t.get('close_time') or t.get('created_at')}</td>
+        </tr>
+        """
+
+    pairs_rows = ""
+    for p in pairs:
+        pairs_rows += f"""
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 8px; font-weight: bold;">{p.get('symbol')}</td>
+            <td style="padding: 8px; font-family: monospace;">{p.get('total_trades')}</td>
+            <td style="padding: 8px; font-weight: bold; color: #10b981;">{p.get('win_rate')}%</td>
+            <td style="padding: 8px; font-family: monospace; font-weight: bold;">{'+' if (p.get('total_pnl') or 0) >= 0 else ''}${p.get('total_pnl')}</td>
+            <td style="padding: 8px; font-size: 11px;">{p.get('best_strategy')}</td>
+        </tr>
+        """
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="fa" dir="rtl">
+    <head>
+        <meta charset="UTF-8">
+        <title>NTK.Ai.Metatrader - گزارش تحلیلی ژورنال معاملات</title>
+        <style>
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #ffffff; color: #1e293b; padding: 24px; margin: 0; }}
+            .header-banner {{ display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #3b82f6; padding-bottom: 16px; margin-bottom: 20px; }}
+            .title {{ font-size: 20px; font-weight: 800; color: #1e3a8a; }}
+            .meta {{ font-size: 11px; color: #64748b; }}
+            .kpi-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }}
+            .kpi-card {{ background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; text-align: right; }}
+            .kpi-label {{ font-size: 11px; color: #64748b; }}
+            .kpi-val {{ font-size: 18px; font-weight: bold; margin-top: 4px; font-family: monospace; }}
+            .section-title {{ font-size: 14px; font-weight: bold; color: #0f172a; margin: 20px 0 10px; border-right: 4px solid #3b82f6; padding-right: 8px; }}
+            table {{ width: 100%; border-collapse: collapse; text-align: right; font-size: 12px; margin-bottom: 20px; }}
+            th {{ background: #f1f5f9; padding: 8px; font-weight: 600; color: #475569; }}
+            .summary-box {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; font-size: 12px; color: #166534; line-height: 1.6; margin-bottom: 20px; }}
+            .print-btn {{ background: #2563eb; color: #ffffff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }}
+            @media print {{
+                .no-print {{ display: none; }}
+                body {{ padding: 0; }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="header-banner">
+            <div>
+                <div class="title">گزارش تحلیلی ژورنال معاملات هوش مصنوعی (AI Trade Journal)</div>
+                <div class="meta">پلتفرم NTK.Ai.Metatrader | توسعه‌دهنده: <a href="https://alikaravi.com/" target="_blank" style="color: #2563eb; text-decoration: none;">علی کروی (Ali Karavi)</a></div>
+            </div>
+            <div style="text-align: left;">
+                <button onclick="window.print()" class="print-btn no-print">🖨️ چاپ / ذخیره PDF</button>
+                <div class="meta" style="margin-top: 6px;">تاریخ تهیه گزارش: {now_str}</div>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">وین‌ریت کلی (Win Rate):</div>
+                <div class="kpi-val" style="color: #16a34a;">{summary.get('win_rate', 0.0)}%</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">سود خالص (Net PnL):</div>
+                <div class="kpi-val" style="color: #2563eb;">{'+' if (summary.get('net_pnl') or 0) >= 0 else ''}${summary.get('net_pnl', 0.0)}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">فاکتور سود (Profit Factor):</div>
+                <div class="kpi-val" style="color: #9333ea;">{summary.get('profit_factor', 1.0)}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">کل معاملات ثبت‌شده:</div>
+                <div class="kpi-val">{summary.get('total_trades', 0)}</div>
+            </div>
+        </div>
+
+        <!-- AI Summary -->
+        <div class="summary-box">
+            <b>🧠 ارزیابی و استنتاج هوش مصنوعی:</b><br>
+            {insights.get('summary_fa', 'اطلاعات در دسترس نیست.')}
+        </div>
+
+        <!-- Pair Performance -->
+        <div class="section-title">عملکرد به تفکیک جفت‌ارزها (Pair Breakdown)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>جفت‌ارز</th>
+                    <th>تعداد معاملات</th>
+                    <th>وین‌ریت</th>
+                    <th>سود خالص</th>
+                    <th>استراتژی برتر معاملاتی</th>
+                </tr>
+            </thead>
+            <tbody>
+                {pairs_rows or '<tr><td colspan="5" style="text-align: center; padding: 12px;">سابقه‌ای ثبت نشده است.</td></tr>'}
+            </tbody>
+        </table>
+
+        <!-- Closed Trades Table -->
+        <div class="section-title">ریز تاریخچه معاملات بسته شده (Closed Trades History)</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>تیکت</th>
+                    <th>نماد</th>
+                    <th>نوع</th>
+                    <th>حجم</th>
+                    <th>قیمت ورود</th>
+                    <th>قیمت خروج</th>
+                    <th>سود/زیان</th>
+                    <th>استراتژی / پیش‌بینی</th>
+                    <th>زمان بسته‌شدن</th>
+                </tr>
+            </thead>
+            <tbody>
+                {trades_rows or '<tr><td colspan="9" style="text-align: center; padding: 12px;">معامله بسته‌شده‌ای یافت نشد.</td></tr>'}
+            </tbody>
+        </table>
+
+        <div style="text-align: center; margin-top: 30px; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+            NTK.Ai.Metatrader - Institutional Algorithmic & AI Trading Engine • Ali Karavi (<a href="https://alikaravi.com/" style="color: #64748b;">alikaravi.com</a>)
+        </div>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+
 # --- Quantitative Attribution & Prediction Matrix Endpoints ---
 
 @app.get("/api/analytics/symbols")
@@ -1102,61 +1282,6 @@ async def get_multi_tf_confluence_matrix(symbol: str):
 @app.get("/api/history/chat")
 async def get_persistent_chat():
     return {"history": db.get_chat_history(40)}
-
-# --- Multi-Agent & Copy Trading Endpoints ---
-
-@app.get("/api/agents/fleet")
-async def get_agent_fleet():
-    return {"agents": list(AGENTS_DB.values()), "total": len(AGENTS_DB)}
-
-
-@app.get("/api/signals/feed")
-async def get_signals_feed(limit: int = 20):
-    return {"signals": SIGNALS_FEED[:limit], "total": len(SIGNALS_FEED)}
-
-
-@app.post("/api/signals/realtime")
-async def publish_realtime_signal(req: SignalPublishRequest):
-    new_sig = {
-        "id": len(SIGNALS_FEED) + 101,
-        "agent_id": 1,
-        "agent_name": "NTK-Master-Agent",
-        "symbol": req.symbol,
-        "type": req.action.upper(),
-        "price": req.price,
-        "sl": req.sl,
-        "tp": req.tp,
-        "confidence": 80.0,
-        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "content": req.content or f"سیگنال معاملاتی {req.action} برای نماد {req.symbol} ثبت شد."
-    }
-    SIGNALS_FEED.insert(0, new_sig)
-    return {"success": True, "signal_id": new_sig["id"], "message": "سیگنال با موفقیت در فید منتشر شد."}
-
-
-@app.post("/api/signals/follow")
-async def follow_agent(req: FollowRequest):
-    target_agent = None
-    for ag in AGENTS_DB.values():
-        if ag["id"] == req.leader_id:
-            target_agent = ag
-            break
-
-    if not target_agent:
-        raise HTTPException(status_code=404, detail="ایجنت مورد نظر یافت نشد.")
-
-    sub = {
-        "subscription_id": len(FOLLOWING_LIST) + 1,
-        "leader_id": target_agent["id"],
-        "leader_name": target_agent["name"],
-        "auto_copy": req.auto_copy,
-        "copy_ratio": req.copy_ratio,
-        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
-    FOLLOWING_LIST.append(sub)
-    target_agent["followers_count"] += 1
-    return {"success": True, "message": f"شما با موفقیت ایجنت {target_agent['name']} را دنبال کردید.", "subscription": sub}
-
 
 @app.get("/api/signals/following")
 async def get_following_list():
@@ -1352,6 +1477,104 @@ async def chat_with_agent(payload: ChatPayload):
         )
         db.record_chat_message(session_id, "assistant", err_msg)
         return {"response": err_msg, "session_id": session_id}
+
+
+# --- Multi-Agent Fleet & Copy Trading Endpoints ---
+
+@app.get("/api/agents/fleet")
+async def get_agent_fleet():
+    subs = db.get_agent_subscriptions()
+    open_positions = mt5_service.get_open_positions()
+    
+    agents = []
+    for ag in AGENTS_DB.values():
+        ag_id = ag["id"]
+        sub_info = subs.get(ag_id, {})
+        is_active = bool(sub_info.get("auto_copy", 1))
+        copy_ratio = float(sub_info.get("copy_ratio", 1.0))
+        
+        agent_open = len([p for p in open_positions if p.get("symbol") in ag.get("symbols", [])])
+        
+        agents.append({
+            **ag,
+            "is_active_in_mt5": is_active,
+            "copy_ratio": copy_ratio,
+            "open_positions": agent_open,
+            "status_label": "🟢 فعال در حساب MT5" if is_active else "⚪ غیرفعال",
+            "status_color": "emerald" if is_active else "slate"
+        })
+    return {"agents": agents, "total": len(agents)}
+
+
+@app.post("/api/agents/{agent_id}/toggle")
+async def toggle_agent_active_state(agent_id: int):
+    target = next((ag for ag in AGENTS_DB.values() if ag["id"] == agent_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="ایجنت یافت نشد.")
+    
+    subs = db.get_agent_subscriptions()
+    current_active = bool(subs.get(agent_id, {}).get("auto_copy", 1))
+    new_active = not current_active
+    
+    db.toggle_agent_subscription(
+        leader_id=agent_id,
+        leader_name=target["name"],
+        auto_copy=new_active,
+        copy_ratio=1.0
+    )
+    status_str = "فعال و متصل به متاتریدر ۵" if new_active else "غیرفعال"
+    return {
+        "success": True,
+        "agent_id": agent_id,
+        "is_active_in_mt5": new_active,
+        "message": f"ایجنت {target['title_fa']} با موفقیت {status_str} شد."
+    }
+
+
+@app.get("/api/signals/feed")
+async def get_signals_feed(limit: int = 20):
+    return {"signals": SIGNALS_FEED[:limit], "total": len(SIGNALS_FEED)}
+
+
+@app.post("/api/signals/realtime")
+async def publish_realtime_signal(req: SignalPublishRequest):
+    new_sig = {
+        "id": len(SIGNALS_FEED) + 101,
+        "agent_id": 1,
+        "agent_name": "NTK-Master-Agent",
+        "symbol": req.symbol,
+        "type": req.action.upper(),
+        "price": req.price,
+        "sl": req.sl,
+        "tp": req.tp,
+        "confidence": 80.0,
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "content": req.content or f"سیگنال معاملاتی {req.action} برای نماد {req.symbol} ثبت شد."
+    }
+    SIGNALS_FEED.insert(0, new_sig)
+    return {"success": True, "signal_id": new_sig["id"], "message": "سیگنال با موفقیت در فید منتشر شد."}
+
+
+@app.post("/api/signals/{signal_id}/execute")
+async def execute_signal_trade(signal_id: int):
+    sig = next((s for s in SIGNALS_FEED if s["id"] == signal_id), None)
+    if not sig:
+        raise HTTPException(status_code=404, detail="سیگنال یافت نشد.")
+    
+    res = mt5_service.execute_order(
+        symbol=sig["symbol"],
+        order_type=sig["type"],
+        volume=0.01,
+        sl=sig.get("sl"),
+        tp=sig.get("tp"),
+        comment=f"Agent Sig #{signal_id}",
+        confidence=sig.get("confidence", 80.0),
+        prediction_title=f"سیگنال {sig.get('agent_name', 'Agent')}",
+        prediction_reason=sig.get("content", "")
+    )
+    return res
+
+
 @app.get("/api/settings")
 async def get_settings():
     return load_settings()
@@ -1363,8 +1586,6 @@ async def update_settings(payload: SettingsPayload):
     save_settings(data)
     init_agent_from_settings(data)
     return {"status": "success", "message": "تنظیمات با موفقیت ذخیره و اعمال شد."}
-
-
 @app.post("/api/test-ai")
 async def test_ai_endpoint(payload: SettingsPayload):
     prov_id = PROVIDER_NAMES.get(payload.provider, OPENAI)

@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 from mt5_service import mt5_service
 from ai_service import ai_service
 from config import settings
@@ -19,7 +19,7 @@ class TradingEngine:
         self.timeframe: str = "M15"
         self.interval_seconds: int = 60
         self.auto_execute: bool = False
-        self.min_confidence: float = 70.0
+        self.min_confidence: float = settings.MIN_TRADE_CONFIDENCE
         self.logs: List[Dict[str, Any]] = []
         self.last_analysis: Dict[str, Any] = {}
         
@@ -54,6 +54,11 @@ class TradingEngine:
         self.portfolio_supervisor_task: Optional[asyncio.Task] = None
         self.portfolio_supervisor_interval_seconds: int = 30
         self.last_portfolio_analysis: Dict[str, Any] = {}
+        # Daily Drawdown Circuit Breaker & Capital Protection Guard
+        self.is_circuit_breaker_active: bool = False
+        self.max_daily_loss_percent: float = settings.MAX_DAILY_LOSS_PERCENT
+        self.daily_loss_guard_enabled: bool = settings.DAILY_LOSS_GUARD_ENABLED
+
     def log(self, level: str, message: str, data: Optional[Dict[str, Any]] = None):
         entry = {
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -79,7 +84,7 @@ class TradingEngine:
                 timeframe=auto_state.get("timeframe", "M15"),
                 interval_seconds=auto_state.get("interval_seconds", 60),
                 auto_execute=auto_state.get("auto_execute", True),
-                min_confidence=auto_state.get("min_confidence", 70.0),
+                min_confidence=auto_state.get("min_confidence", settings.MIN_TRADE_CONFIDENCE),
             )
 
         scalp_state = db.get_state("scalp_trade", {})
@@ -115,7 +120,7 @@ class TradingEngine:
 
     async def start(self, symbols: Optional[List[str]] = None, timeframe: str = "M15",
                     interval_seconds: int = 60, auto_execute: bool = False,
-                    min_confidence: float = 70.0) -> Dict[str, Any]:
+                    min_confidence: float = settings.MIN_TRADE_CONFIDENCE) -> Dict[str, Any]:
         """Start the background automated trader engine."""
         if self.is_running:
             return {"success": False, "message": "موتور معامله‌گر در حال حاضر فعال است."}
@@ -170,9 +175,35 @@ class TradingEngine:
             "auto_execute": self.auto_execute,
             "min_confidence": self.min_confidence,
             "last_analysis": self.last_analysis,
+            "is_circuit_breaker_active": self.is_circuit_breaker_active,
             "log_count": len(self.logs)
         }
 
+    def check_daily_loss_guard(self) -> Tuple[bool, str]:
+        """
+        Check if daily loss exceeds MAX_DAILY_LOSS_PERCENT.
+        Returns: (is_blocked, reason_fa)
+        """
+        if not self.daily_loss_guard_enabled:
+            return False, ""
+
+        time_stats = db.get_time_framed_trading_stats()
+        stats_24h = time_stats.get("last_24h", {})
+        pnl_24h = float(stats_24h.get("pnl", 0.0))
+
+        acc = mt5_service.get_account_info() or {}
+        balance = float(acc.get("balance", 1000.0))
+
+        if balance > 0 and pnl_24h < 0:
+            loss_pct = (abs(pnl_24h) / balance) * 100.0
+            if loss_pct >= self.max_daily_loss_percent:
+                self.is_circuit_breaker_active = True
+                msg = f"⛔ کلید محافظت از سرمایه (Circuit Breaker) فعال شد! افت ۲۴ ساعت گذشته ({pnl_24h:.2f}$ = {loss_pct:.1f}%) به سقف مجاز روزانه ({self.max_daily_loss_percent}%) رسید. معاملات جدید موقتاً مسدود شدند."
+                self.log("CIRCUIT_BREAKER", msg)
+                return True, msg
+
+        self.is_circuit_breaker_active = False
+        return False, ""
     def get_logs(self, limit: int = 50) -> List[Dict[str, Any]]:
         """Get recent engine logs from in-memory and SQLite."""
         db_logs = db.get_persistent_logs(limit)
@@ -206,6 +237,10 @@ class TradingEngine:
                 self.log("WARN", "عدم اتصال به متاتریدر ۵ جهت بررسی خودکار")
                 return
 
+            blocked, reason = self.check_daily_loss_guard()
+            if blocked:
+                self.log("WARN", reason)
+                return
             acc_info = mt5_service.get_account_info() or {}
             overview = mt5_service.get_symbol_overview(symbol)
             if not overview:
@@ -356,7 +391,10 @@ class TradingEngine:
         try:
             if not mt5_service.ensure_connected():
                 return
-
+            blocked, reason = self.check_daily_loss_guard()
+            if blocked:
+                self.log("SCALP_WARN", reason)
+                return
             overview = mt5_service.get_symbol_overview(symbol)
             if not overview:
                 return
@@ -976,9 +1014,12 @@ class TradingEngine:
         """
         Execute a batch basket trade on all approved pairs (or a specific selection).
         """
+        blocked, reason = self.check_daily_loss_guard()
+        if blocked:
+            return {"success": False, "message": reason, "executed": 0}
+
         analysis = await self.analyze_all_portfolio_pairs(force_refresh=False)
         pairs = analysis.get("pairs", [])
-
         targets = [
             p for p in pairs 
             if p["is_approved"] and (selected_symbols is None or p["symbol"].upper() in [s.upper() for s in selected_symbols])

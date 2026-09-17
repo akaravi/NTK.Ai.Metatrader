@@ -56,7 +56,13 @@ class Settings(BaseSettings):
     # AI Continuous Open Position Re-Analysis & Guard
     AI_POSITION_MONITOR_ENABLED: bool = get_saved_setting("ai_position_monitor_enabled", "true").lower() in ["true", "1", "yes"]
     AI_POSITION_MONITOR_INTERVAL: int = int(get_saved_setting("ai_position_monitor_interval", "20"))
-    SCALP_MIN_CONFIDENCE: float = float(os.getenv("SCALP_MIN_CONFIDENCE", "75.0"))
+
+    # Daily Drawdown Circuit Breaker & Loss Protection Guard
+    DAILY_LOSS_GUARD_ENABLED: bool = get_saved_setting("daily_loss_guard_enabled", "true").lower() in ["true", "1", "yes"]
+    MAX_DAILY_LOSS_PERCENT: float = float(get_saved_setting("max_daily_loss_percent", "3.0"))
+    # Minimum confidence threshold for automated trade execution (Auto-Trader & Scalper)
+    MIN_TRADE_CONFIDENCE: float = float(get_saved_setting("min_trade_confidence", "75.0"))
+    SCALP_MIN_CONFIDENCE: float = float(get_saved_setting("min_trade_confidence", "75.0"))
 
 
 settings = Settings()

@@ -187,3 +187,277 @@ div.rtl-text {
 .flash-down {
     animation: tickDown 0.6s ease;
 }
+ 
+/* Responsive shell: preserve readable cards and horizontal data tables. */
+main {
+    min-width: 0;
+}
+
+main > [id^="view-"] {
+    min-width: 0;
+}
+
+table {
+    min-width: 620px;
+}
+
+button,
+input,
+select,
+textarea {
+    min-height: 34px;
+}
+
+/* Optional light workspace. Tailwind utility colors are normalized here so
+   every existing view follows the same surface and contrast system. */
+body.theme-light {
+    --bg-main: #f1f5f9;
+    --bg-panel: #ffffff;
+    --bg-card: #f8fafc;
+    --bg-input: #ffffff;
+    --border-color: #cbd5e1;
+    background: var(--bg-main) !important;
+    color: #0f172a !important;
+}
+
+body.theme-light header,
+body.theme-light aside,
+body.theme-light main,
+body.theme-light [class*="bg-[#090d16]"],
+body.theme-light [class*="bg-[#0f1523]"],
+body.theme-light [class*="bg-[#0b101c]"],
+body.theme-light [class*="bg-[#151c2e]"],
+body.theme-light [class*="bg-[#101726]"],
+body.theme-light [class*="bg-[#141d30]"] {
+    background-color: var(--bg-panel) !important;
+    border-color: var(--border-color) !important;
+}
+
+body.theme-light .card-pro,
+body.theme-light [class*="from-[#151c2e]"] {
+    background: var(--bg-panel) !important;
+    border-color: var(--border-color) !important;
+}
+
+body.theme-light [class*="text-white"],
+body.theme-light [class*="text-slate-200"],
+body.theme-light [class*="text-slate-300"] {
+    color: #1e293b !important;
+}
+
+body.theme-light [class*="text-slate-400"],
+body.theme-light [class*="text-slate-500"] {
+    color: #64748b !important;
+}
+
+body.theme-light [class*="text-slate-600"] {
+    color: #94a3b8 !important;
+}
+
+body.theme-light [class*="border-slate-"] {
+    border-color: #cbd5e1 !important;
+}
+
+body.theme-light .dock-btn:hover {
+    color: #0f172a;
+    background: #e2e8f0;
+}
+
+body.theme-light .dock-btn.active {
+    color: #ffffff;
+    background: var(--accent);
+}
+
+@media (max-width: 1023px) {
+    body {
+        overflow-x: hidden;
+    }
+
+    header {
+        padding-inline: 0.75rem !important;
+    }
+
+    header > div:first-child h1 {
+        max-width: 8rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #right-action-deck {
+        width: min(100%, 420px) !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        max-height: none !important;
+        position: static !important;
+        border-top: 1px solid var(--border-color);
+    }
+
+    #deck-resizer-handle {
+        display: none !important;
+    }
+
+    main {
+        overflow: visible !important;
+    }
+}
+
+@media (max-width: 640px) {
+    header {
+        height: auto !important;
+        min-height: 3.5rem;
+        gap: 0.5rem;
+    }
+
+    header > div:first-child > div:last-child {
+        display: none;
+    }
+
+    header > div:last-child {
+        gap: 0.25rem;
+    }
+
+    header > div:last-child > button {
+        padding: 0.45rem !important;
+    }
+
+    header > div:last-child > button:first-child {
+        display: none;
+    }
+
+    #btn-toggle-sound {
+        display: none;
+    }
+
+    .h-9 {
+        height: 2.25rem !important;
+    }
+
+    .h-9 > * {
+        flex: 0 0 auto;
+    }
+
+    body > div.flex-1 {
+        display: block;
+        min-height: 0;
+    }
+
+    body > div.flex-1 > aside:first-child {
+        position: fixed;
+        inset-inline: 0;
+        bottom: 0;
+        top: auto;
+        width: 100%;
+        height: 4.25rem;
+        padding: 0.45rem 0.35rem;
+        flex-direction: row;
+        justify-content: space-around;
+        gap: 0.15rem;
+        overflow-x: auto;
+        background: color-mix(in srgb, var(--bg-panel) 94%, transparent);
+        backdrop-filter: blur(14px);
+        border-top: 1px solid var(--border-color);
+        border-left: 0;
+    }
+
+    .dock-btn {
+        width: 2.75rem;
+        height: 2.75rem;
+        flex: 0 0 2.75rem;
+    }
+
+    main {
+        padding: 0.75rem !important;
+        padding-bottom: 5.25rem !important;
+    }
+
+    #right-action-deck {
+        width: 100% !important;
+        padding: 0.75rem !important;
+    }
+
+    .card-pro {
+        border-radius: 0.75rem;
+    }
+
+    [id^="view-"] .flex.items-center.justify-between {
+        gap: 0.65rem;
+        flex-wrap: wrap;
+    }
+
+    [id^="view-"] h2,
+    [id^="view-"] h3 {
+        line-height: 1.8;
+    }
+
+    [id^="view-"] .overflow-x-auto {
+        scrollbar-width: thin;
+        max-width: 100%;
+    }
+
+    #view-fleet .grid,
+    #view-intel .grid,
+    #view-portfolio .grid {
+        min-width: 0;
+    }
+
+    #view-fleet [id$="-container"],
+    #view-intel [id$="-container"],
+    #view-portfolio [id$="-container"] {
+        min-width: 0;
+    }
+
+    #chat-drawer {
+        width: 100% !important;
+    }
+}
+ 
+/* Fleet density: use the available command-center width instead of stacking
+   all agents in one narrow column. */
+#fleet-agents-container {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+}
+
+#fleet-agents-container > .card-pro {
+    min-width: 0;
+}
+
+#signals-feed-container {
+    min-height: 12rem;
+}
+
+@media (min-width: 768px) {
+    #fleet-agents-container {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    #view-fleet .grid > .lg\:col-span-7 {
+        min-width: 0;
+    }
+
+    #view-fleet .grid > .lg\:col-span-5 {
+        min-width: 0;
+    }
+}
+ 
+/* Tailwind's lg:flex can override a runtime-added .hidden class. Keep the
+   non-trading layout deterministic at every breakpoint. */
+body.trading-deck-hidden #right-action-deck,
+body.trading-deck-hidden #deck-resizer-handle {
+    display: none !important;
+}
+ 
+/* Strategy catalog uses the freed workspace efficiently on wide screens. */
+#strategies-grid-container {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 768px) {
+    #strategies-grid-container {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+}

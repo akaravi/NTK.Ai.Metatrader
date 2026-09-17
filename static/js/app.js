@@ -38,6 +38,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 4000);
 });
 
+// Theme preference is local and does not affect trading state.
+function applyTheme(theme) {
+    const isLight = theme === 'light';
+    document.body.classList.toggle('theme-light', isLight);
+    document.documentElement.style.colorScheme = isLight ? 'light' : 'dark';
+    const icon = document.getElementById('theme-icon');
+    const button = document.getElementById('btn-toggle-theme');
+    if (icon) icon.setAttribute('data-lucide', isLight ? 'moon' : 'sun');
+    if (button) {
+        button.title = isLight ? 'بازگشت به حالت تاریک' : 'فعال‌سازی حالت روشن';
+        button.setAttribute('aria-label', button.title);
+    }
+    if (window.lucide) lucide.createIcons();
+}
+
+function toggleTheme() {
+    const nextTheme = document.body.classList.contains('theme-light') ? 'dark' : 'light';
+    applyTheme(nextTheme);
+    try { localStorage.setItem('ntk_theme', nextTheme); } catch (e) {}
+}
+
 // Sound Alert Effects (Web Audio API)
 function playSoundAlert(type = 'chime') {
     if (!soundEnabled) return;
@@ -196,6 +217,18 @@ function switchMainView(view) {
 
     const activeContainer = document.getElementById(`view-${view}`);
     if (activeContainer) activeContainer.classList.remove('hidden');
+
+    // The execution deck belongs to the trading terminal. Hiding it on
+    // analytical pages lets the selected view use the full workspace.
+    const actionDeck = document.getElementById('right-action-deck');
+    const deckResizer = document.getElementById('deck-resizer-handle');
+    const showTradingDeck = view === 'trading';
+    document.body.classList.toggle('trading-deck-hidden', !showTradingDeck);
+    if (actionDeck) actionDeck.classList.toggle('hidden', !showTradingDeck);
+    if (deckResizer) {
+        deckResizer.classList.toggle('hidden', !showTradingDeck);
+        deckResizer.classList.toggle('lg:flex', showTradingDeck);
+    }
 
     if (view === 'decisions') {
         fetchDecisionsHistory();
@@ -692,7 +725,7 @@ function initResizableDeckSplitter() {
     document.addEventListener('touchmove', (e) => {
         if (!isDragging || e.touches.length !== 1) return;
         const delta = startX - e.touches[0].clientX;
-        let newWidth = Math.max(280, Math.min(720, startWidth + delta));
+        const newWidth = Math.max(280, Math.min(720, startWidth + delta));
         deck.style.width = `${newWidth}px`;
     }, { passive: true });
 
@@ -708,6 +741,9 @@ function initResizableDeckSplitter() {
 
 function restoreUserUIPreferences() {
     try {
+        const savedTheme = localStorage.getItem('ntk_theme');
+        applyTheme(savedTheme === 'light' ? 'light' : 'dark');
+
         // 1. Restore Deck Width
         const savedWidth = localStorage.getItem('ntk_deck_width');
         const deck = document.getElementById('right-action-deck');
@@ -1783,9 +1819,10 @@ async function fetchBottomLogs() {
     } catch (e) {}
 }
 
-// Fleet & Signals
+// Fleet & Signals - AI Multi-Agent Command Center
 async function fetchFleetAgents() {
     const container = document.getElementById('fleet-agents-container');
+    const badge = document.getElementById('fleet-active-agents-badge');
     if (!container) return;
 
     try {
@@ -1793,43 +1830,101 @@ async function fetchFleetAgents() {
         const data = await res.json();
         const agents = data.agents || [];
 
-        container.innerHTML = agents.map(a => `
-            <div class="bg-[#0b101c] p-3.5 rounded-xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div class="flex items-center space-x-2.5 space-x-reverse">
-                    <div class="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center">
-                        <i data-lucide="${a.avatar || 'bot'}" class="w-4 h-4"></i>
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <h4 class="font-bold text-xs text-white">${a.name}</h4>
-                            <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 font-mono">وین‌ریت: ${a.win_rate}%</span>
+        if (badge) {
+            const activeCnt = agents.filter(a => a.is_active_in_mt5).length;
+            badge.innerText = `${activeCnt} / ${agents.length} متصل به MT5`;
+            badge.className = `text-[10px] px-2 py-0.5 rounded font-mono font-bold ${activeCnt > 0 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-slate-900 text-slate-400 border border-slate-800'}`;
+        }
+
+        container.innerHTML = agents.map(a => {
+            const isActive = a.is_active_in_mt5;
+            const symbolsPills = (a.symbols || []).map(s => `<span class="px-1.5 py-0.2 rounded bg-[#101726] border border-slate-800 text-[9px] font-mono text-cyan-300">${s}</span>`).join(' ');
+            
+            return `
+                <div class="card-pro p-4 space-y-3 transition border-slate-800 hover:border-slate-700 ${isActive ? 'bg-[#0f172a]/70 border-purple-900/60' : 'opacity-85'}">
+                    <!-- Header Row -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+                        <div class="flex items-center space-x-2.5 space-x-reverse">
+                            <div class="w-9 h-9 rounded-xl ${isActive ? 'bg-purple-600/20 text-purple-400 border border-purple-500/40' : 'bg-slate-800 text-slate-400'} flex items-center justify-center shadow-sm">
+                                <i data-lucide="${a.avatar || 'bot'}" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h4 class="font-bold text-xs text-white">${a.title_fa || a.name}</h4>
+                                    <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">(${a.name})</span>
+                                </div>
+                                <p class="text-[11px] text-slate-400 mt-0.5">${a.description_fa || a.description}</p>
+                            </div>
                         </div>
-                        <p class="text-[11px] text-slate-400 mt-0.5">${a.description}</p>
+                        <div>
+                            <button onclick="toggleAgentActiveAction(${a.id})" class="px-3 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 ${
+                                isActive 
+                                ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20' 
+                                : 'bg-[#151c2e] hover:bg-slate-700 text-slate-300 border border-slate-700'
+                            }">
+                                <span class="w-2 h-2 rounded-full ${isActive ? 'bg-white animate-pulse' : 'bg-slate-500'}"></span>
+                                <span>${isActive ? 'فعال روی حساب MT5' : 'غیرفعال (کلیک برای اتصال)'}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Strategy, Timeframe & Symbols Strip -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs font-mono bg-[#0b101c] p-2 rounded-lg border border-slate-800/60">
+                        <div class="flex items-center space-x-2 space-x-reverse text-[11px]">
+                            <span class="text-slate-400 font-sans text-[10px]">استراتژی:</span>
+                            <span class="text-purple-300 font-sans font-medium">${a.strategy}</span>
+                            <span class="text-slate-600">•</span>
+                            <span class="text-amber-300 font-bold">${a.timeframe || 'M15'}</span>
+                        </div>
+                        <div class="flex items-center space-x-1.5 space-x-reverse">
+                            <span class="text-slate-500 font-sans text-[10px]">نمادها:</span>
+                            <div class="flex gap-1">${symbolsPills}</div>
+                        </div>
+                    </div>
+
+                    <!-- Live Metrics Strip -->
+                    <div class="grid grid-cols-4 gap-2 text-center text-xs font-mono">
+                        <div class="bg-[#0b101c] p-1.5 rounded-lg border border-slate-800/60">
+                            <span class="text-[9px] text-slate-500 block font-sans">وین‌ریت</span>
+                            <span class="font-bold text-emerald-400">${a.win_rate}%</span>
+                        </div>
+                        <div class="bg-[#0b101c] p-1.5 rounded-lg border border-slate-800/60">
+                            <span class="text-[9px] text-slate-500 block font-sans">سود کل</span>
+                            <span class="font-bold text-cyan-300">+$${a.total_pnl}</span>
+                        </div>
+                        <div class="bg-[#0b101c] p-1.5 rounded-lg border border-slate-800/60">
+                            <span class="text-[9px] text-slate-500 block font-sans">معاملات کل</span>
+                            <span class="font-bold text-slate-300">${a.total_trades || 0}</span>
+                        </div>
+                        <div class="bg-[#0b101c] p-1.5 rounded-lg border border-slate-800/60">
+                            <span class="text-[9px] text-slate-500 block font-sans">پوزیشن‌های باز</span>
+                            <span class="font-bold ${a.open_positions > 0 ? 'text-cyan-400' : 'text-slate-500'}">${a.open_positions || 0}</span>
+                        </div>
                     </div>
                 </div>
-                <button onclick="followAgent(${a.id})" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg transition">
-                    کپی ترید
-                </button>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
         if (window.lucide) lucide.createIcons();
-    } catch (e) {}
+    } catch (e) {
+        container.innerHTML = `<div class="card-pro p-6 text-center text-rose-400 font-sans">خطا در دریافت اطلاعات ناوگان ایجنت‌ها: ${e.message}</div>`;
+    }
 }
 
-async function followAgent(agentId) {
+async function toggleAgentActiveAction(agentId) {
     try {
-        const res = await fetch('/api/signals/follow', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ leader_id: agentId, auto_copy: true, copy_ratio: 1.0 })
-        });
+        const res = await fetch(`/api/agents/${agentId}/toggle`, { method: 'POST' });
         const data = await res.json();
         if (data.success) {
-            showToast(data.message, 'success');
+            playSoundAlert('signal');
+            showToast(data.message || 'وضعیت ایجنت تغییر کرد.', 'success');
             fetchFleetAgents();
+        } else {
+            showToast(data.error || 'خطا در تغییر وضعیت ایجنت', 'error');
         }
-    } catch (e) {}
+    } catch (e) {
+        showToast(`خطا: ${e.message}`, 'error');
+    }
 }
 
 async function fetchSignalsFeed() {
@@ -1842,22 +1937,62 @@ async function fetchSignalsFeed() {
         const signals = data.signals || [];
 
         if (signals.length === 0) {
-            container.innerHTML = '<div class="text-xs text-slate-500 text-center py-6">سیگنالی ثبت نشده است.</div>';
+            container.innerHTML = '<div class="text-xs text-slate-500 text-center py-8">سیگنال فعالی در فید موجود نیست.</div>';
             return;
         }
 
-        container.innerHTML = signals.map(s => `
-            <div class="bg-[#0b101c] p-3 rounded-xl border border-slate-800 space-y-1.5 text-xs">
-                <div class="flex items-center justify-between">
-                    <span class="font-bold text-white">${s.agent_name}</span>
-                    <span class="px-2 py-0.5 rounded font-bold ${s.type === 'BUY' ? 'bg-emerald-950 text-emerald-400' : 'bg-rose-950 text-rose-400'}">${s.type} ${s.symbol}</span>
+        container.innerHTML = signals.map(s => {
+            const isBuy = s.type === 'BUY';
+            return `
+                <div class="bg-[#0b101c] p-3 rounded-xl border border-slate-800 space-y-2 text-xs">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-1.5 space-x-reverse">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span class="font-bold text-white">${s.agent_name}</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono ${isBuy ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}">
+                            ${s.type} ${s.symbol}
+                        </span>
+                    </div>
+                    <p class="text-slate-300 text-[11px] leading-relaxed font-sans">${s.content}</p>
+                    <div class="flex items-center justify-between pt-1 border-t border-slate-800/60 font-mono text-[10px]">
+                        <div class="text-slate-400">
+                            <span>SL: ${s.sl || '-'}</span> | <span>TP: ${s.tp || '-'}</span> | <span>اطمینان: ${s.confidence || 80}%</span>
+                        </div>
+                        <button onclick="executeSignalAction(${s.id})" class="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-bold transition flex items-center gap-1 shadow-sm">
+                            <i data-lucide="zap" class="w-3 h-3"></i>
+                            <span>⚡ ورود فوری</span>
+                        </button>
+                    </div>
                 </div>
-                <p class="text-slate-300 text-[11px]">${s.content}</p>
-            </div>
-        `).join('');
-    } catch (e) {}
+            `;
+        }).join('');
+
+        if (window.lucide) lucide.createIcons();
+    } catch (e) {
+        container.innerHTML = `<div class="text-xs text-rose-400 text-center py-4">خطا در دریافت فید سیگنال‌ها: ${e.message}</div>`;
+    }
 }
 
+async function executeSignalAction(signalId) {
+    const confirmed = await showCustomConfirm('اجرای سیگنال ایجنت', 'آیا از ارسال مستقیم این سیگنال به حساب متاتریدر ۵ اطمینان دارید؟');
+    if (!confirmed) return;
+    
+    try {
+        const res = await fetch(`/api/signals/${signalId}/execute`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            playSoundAlert('trade');
+            showToast(`سیگنال با موفقیت روی متاتریدر اجرا شد (تیکت: #${data.order_ticket}).`, 'success');
+            fetchPositions();
+            fetchTerminalAndAccount();
+        } else {
+            showToast(data.error || 'خطا در اجرای سیگنال', 'error');
+        }
+    } catch (e) {
+        showToast(`خطا در ارسال سفارش: ${e.message}`, 'error');
+    }
+}
 // Economic Calendar & Market Intel
 async function fetchEconomicCalendar() {
     const container = document.getElementById('calendar-events-container');
@@ -1872,13 +2007,17 @@ async function fetchEconomicCalendar() {
             <div class="bg-[#0b101c] p-3 rounded-xl border border-slate-800 space-y-1.5">
                 <div class="flex items-center justify-between">
                     <span class="font-bold text-slate-200 text-xs">${ev.title_fa}</span>
-                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 font-mono">⏳ ${ev.countdown_formatted}</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold ${ev.impact === 'HIGH' ? 'bg-rose-950 text-rose-400 border border-rose-800' : 'bg-amber-950 text-amber-400'}">${ev.impact}</span>
                 </div>
-                <p class="text-[11px] text-slate-400 leading-relaxed">${ev.description_fa}</p>
+                <div class="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                    <span>${ev.currency} • ${ev.country}</span>
+                    <span class="text-cyan-400">${ev.countdown_formatted}</span>
+                </div>
             </div>
         `).join('');
     } catch (e) {}
 }
+
 async function fetchMarketIntel() {
     try {
         const [macroRes, newsRes, etfRes, termRes, accRes] = await Promise.all([
@@ -2161,6 +2300,13 @@ async function loadSettingsIntoModal() {
             const inp = document.getElementById('cfg-ai-pos-interval');
             if (inp) inp.value = data.ai_position_monitor_interval;
         }
+        const minConf = data.min_trade_confidence || 75;
+        const confInput = document.getElementById('cfg-min-confidence');
+        const confRange = document.getElementById('cfg-min-confidence-range');
+        const confLabel = document.getElementById('cfg-min-confidence-label');
+        if (confInput) confInput.value = minConf;
+        if (confRange) confRange.value = minConf;
+        if (confLabel) confLabel.innerText = minConf + '%';
     } catch (e) {}
 }
 
@@ -2307,6 +2453,7 @@ async function saveAllSettingsModal() {
         max_open_positions: parseInt(document.getElementById('cfg-max-positions')?.value) || 10,
         ai_position_monitor_enabled: document.getElementById('cfg-ai-pos-enabled') ? document.getElementById('cfg-ai-pos-enabled').checked : true,
         ai_position_monitor_interval: parseInt(document.getElementById('cfg-ai-pos-interval')?.value) || 20,
+        min_trade_confidence: parseFloat(document.getElementById('cfg-min-confidence')?.value) || 75.0,
     };
     try {
         const res = await fetch('/api/connect', {

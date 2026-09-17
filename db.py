@@ -948,6 +948,45 @@ class DatabaseManager:
             print(f"Error fetching symbol stats for {symbol}: {e}")
             return {"total_trades": 0, "wins": 0, "losses": 0, "win_rate": 75.0, "total_pnl": 0.0, "formatted": "75.0%"}
 
+    # --- Agent Fleet Subscriptions & Control ---
+
+    def get_agent_subscriptions(self) -> Dict[int, Dict[str, Any]]:
+        """Fetch all active agent subscriptions from SQLite."""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM subscriptions")
+                rows = cursor.fetchall()
+                return {r["leader_id"]: dict(r) for r in rows}
+        except Exception as e:
+            print(f"Error fetching agent subscriptions: {e}")
+            return {}
+
+    def toggle_agent_subscription(self, leader_id: int, leader_name: str, auto_copy: bool, copy_ratio: float = 1.0) -> bool:
+        """Toggle or update an agent subscription."""
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id FROM subscriptions WHERE leader_id = ?", (leader_id,))
+                row = cursor.fetchone()
+                if row:
+                    cursor.execute("""
+                        UPDATE subscriptions
+                        SET auto_copy = ?, copy_ratio = ?
+                        WHERE leader_id = ?
+                    """, (1 if auto_copy else 0, copy_ratio, leader_id))
+                else:
+                    cursor.execute("""
+                        INSERT INTO subscriptions (leader_id, leader_name, auto_copy, copy_ratio, created_at)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (leader_id, leader_name, 1 if auto_copy else 0, copy_ratio, now))
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error saving agent subscription: {e}")
+            return False
+
     def add_portfolio_pair(self, symbol: str, title_fa: str = "", min_confidence: float = 70.0, lot_size: float = 0.01, timeframe: str = "M15") -> bool:
         """Add a new currency pair to the portfolio hub."""
         sym_clean = symbol.strip().upper()

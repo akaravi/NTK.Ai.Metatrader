@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ntk-ai-metatrader"
 version = "1.2.2"
-description = "NTK AI MetaTrader: An AI-powered trading assistant for MetaTrader 4 & 5 by Ali Karavi (inspired by metatrader-ai & AI-Trader)."
+description = "NTK AI MetaTrader: Advanced AI-powered Quantitative Trading System for MetaTrader 4 & 5 by Ali Karavi."
 readme = "README.md"
 requires-python = ">=3.9.7"
 license = "MIT"
