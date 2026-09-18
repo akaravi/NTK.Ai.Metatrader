@@ -2,7 +2,7 @@
 
 [![Developer](https://img.shields.io/badge/Developer-Ali%20Karavi-blue.svg)](https://alikaravi.com/)
 [![Website](https://img.shields.io/badge/Website-alikaravi.com-green.svg)](https://alikaravi.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](../LICENSE)
 
 ---
 

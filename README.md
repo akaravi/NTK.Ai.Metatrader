@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/badge/Python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-3776ab.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![MetaTrader 5](https://img.shields.io/badge/MetaTrader-5%20Build%206198+-red.svg?style=for-the-badge&logo=meta&logoColor=white)](https://www.metatrader5.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg?style=for-the-badge)](LICENSE)
 
 ---
 
@@ -224,7 +224,7 @@ Built with a high-performance FastAPI backend, real-time WebSocket tick streamin
 
 - **Author & Developer:** [Ali Karavi](https://alikaravi.com/)
 - **Website:** [https://alikaravi.com/](https://alikaravi.com/)
-- **License:** [MIT License](LICENSE)
+- **License:** [GNU General Public License v3.0](LICENSE)
 
 ---
 
@@ -271,7 +271,7 @@ NTK.Ai.Metatrader/
 ├── trading_engine.py           # Auto-trader, micro-scalper, trailing stop & supervisor
 ├── settings.json               # Local persistent configuration file
 ├── requirements.txt            # Root dependencies reference
-├── LICENSE                     # MIT License
+├── LICENSE                     # GNU General Public License v3.0
 │
 ├── data/                       # Local SQLite database directory
 │   └── ntk_trader.db           # Persistent SQLite database
@@ -365,4 +365,4 @@ Trading financial instruments, forex, commodities, and derivatives involves subs
 ### License & Attribution
 
 - Developed by **[Ali Karavi](https://alikaravi.com/)**
-- Licensed under the **[MIT License](LICENSE)**.
+- Licensed under the **[GNU General Public License v3.0](LICENSE)**.

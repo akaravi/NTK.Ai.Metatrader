@@ -8,7 +8,7 @@ version = "1.2.2"
 description = "NTK AI MetaTrader: Advanced AI-powered Quantitative Trading System for MetaTrader 4 & 5 by Ali Karavi."
 readme = "README.md"
 requires-python = ">=3.9.7"
-license = "MIT"
+license = "GPL-3.0-only"
 authors = [
   { name = "Ali Karavi", email = "info@alikaravi.com" }
 ]
