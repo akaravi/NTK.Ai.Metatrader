@@ -116,6 +116,11 @@
                 <span id="hud-mt5-dot" class="w-2 h-2 rounded-full bg-slate-500"></span>
                 <span id="hud-mt5-text" class="text-slate-300">MT5: قطع</span>
             </div>
+            <!-- Live automation engines -->
+            <div id="automation-engines-indicators" class="flex items-center gap-1.5" aria-label="موتورهای معاملاتی خودکار فعال" title="وضعیت موتورهای معاملاتی خودکار">
+                <span class="text-[10px] text-slate-500 hidden 2xl:inline">موتورهای فعال:</span>
+                <span class="automation-empty text-[10px] text-slate-500">در حال بررسی</span>
+            </div>
 
             <!-- AI Sound Alert Toggle -->
             <button id="btn-toggle-sound" onclick="toggleAudioAlerts()" class="p-2 rounded-lg bg-[#151c2e] hover:bg-slate-800 text-slate-300 border border-slate-800 transition" title="هشدار صوتی">
@@ -1504,7 +1509,7 @@
         </div>
     </div>
 
-    <script src="/static/js/app.js?v=responsive-4"></script>
+    <script src="/static/js/app.js?v=responsive-5"></script>
     <script>
         lucide.createIcons();
     </script>

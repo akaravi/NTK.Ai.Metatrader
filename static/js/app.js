@@ -11,6 +11,7 @@ let activeMainView = 'trading';
 let soundEnabled = true;
 let audioCtx = null;
 let ws = null;
+let currentChatSessionId = 'default';
 
 document.addEventListener('DOMContentLoaded', () => {
     initChart();
@@ -22,7 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchMarketData();
     fetchPositions();
     fetchAIAnalysis();
-    fetchConfluence();
+    fetchPortfolioSupervisorStatus();
+    syncAutomationIndicators();
     fetchStrategies();
     fetchMatrixAnalytics();
     loadSettingsIntoModal();
@@ -2099,6 +2101,38 @@ async function fetchMarketIntel() {
         }
     } catch (e) {
         console.error('Error fetching market intel:', e);
+    }
+}
+
+function toggleChatDrawer() {
+    const drawer = document.getElementById('chat-drawer');
+    if (!drawer) return;
+    const isOpen = !drawer.classList.contains('-translate-x-full');
+    drawer.classList.toggle('-translate-x-full', isOpen);
+    drawer.setAttribute('aria-hidden', String(isOpen));
+    if (!isOpen) {
+        fetchChatSessions();
+        loadChatSessionMessages(currentChatSessionId);
+        setTimeout(() => document.getElementById('drawerChatInput')?.focus(), 120);
+    }
+}
+
+async function fetchChatSessions() {
+    const select = document.getElementById('chat-session-select');
+    if (!select) return;
+    try {
+        const res = await fetch('/api/chat/sessions');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+        select.innerHTML = sessions.map(s =>
+            `<option value="${s.id}">${s.title || 'گفتگو'}</option>`
+        ).join('');
+        if (!sessions.some(s => s.id === currentChatSessionId)) currentChatSessionId = 'default';
+        select.value = currentChatSessionId;
+    } catch (e) {
+        select.innerHTML = '<option value="default">گفتگوی اصلی</option>';
+        select.value = currentChatSessionId;
     }
 }
 
