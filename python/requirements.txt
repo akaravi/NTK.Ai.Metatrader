@@ -1,5 +1,5 @@
 backports.tarfile==1.2.0
-certifi==2026.5.20
+certifi==2026.10.19
 charset-normalizer==3.4.7
 customtkinter==5.2.2
 docutils==0.23
